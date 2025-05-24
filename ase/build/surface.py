@@ -476,16 +476,34 @@ def fcc211(symbol, size, a=None, vacuum=None, orthogonal=True):
     return newatoms
 
 
-def mx2(formula='MoS2', kind='2H', a=3.18, thickness=3.19,
-        size=(1, 1, 1), vacuum=None):
+def mx2(formula='MoS2', kind='1H', a=3.18, thickness=3.19,
+        size=(1, 1, 1), distortion_factor=0.07, vacuum=None):
     """Create three-layer 2D materials with hexagonal structure.
 
-    For metal dichalcogenites, etc.
-
-    The kind argument accepts '2H', which gives a mirror plane symmetry
-    and '1T', which gives an inversion symmetry."""
-
-    if kind == '2H':
+    sources:
+    https://en.wikipedia.org/wiki/Transition_metal_dichalcogenide_monolayers
+    Xiaofeng Qian et al. (2014). Quantum spin Hall effect in 2-D TMDs. Science, 346(6215).
+    Shujie Tang et al. (2017). Quantum spin Hall state in monolayer 1T'-WTe₂. Nature Physics, 13(7), 683-687.
+    
+    This routine is used for metal dichalcogenides :mol:`MX_2` 2D structures
+    such as :mol:`MoS_2`.
+    
+    Parameters
+    ----------
+    formula (str): Chemical formula of the TMD (default: "MoS2")
+    kind : {'1H', '1T', '1T\''}, default: '1H'
+        - "1H": mirror-plane symmetry (trigonal prismatic) [semiconductor]
+        - "1T": inversion symmetry (octahedral or trigonal antiprismatic) [metal]
+        - "1T'": Distorted 1T - Metastable topological phase [semimetal or narrow-gap semiconductor]
+    a (float): Lattice constant in Angstrom (default: 3.16)
+    thickness (float): Thickness of the layer in Angstrom (default: 3.19)
+    size (tuple[int,int,int]): Repetition of the unit cell (default: (1, 1, 1))
+    vacuum (float | None): If not None, add vacuum padding along z-axis (default: None)
+    distortion_factor (float): Controls the magnitude of distortion for 
+                               1T' structure (dimerization) (default: 0.07 based on Tang S. et al.)
+    """
+    cell = [[a, 0, 0], [-a/2, a * 3**0.5/2, 0], [0, 0, 0]]
+    if kind == '1H':
         basis = [(0, 0, 0),
                  (2 / 3, 1 / 3, 0.5 * thickness),
                  (2 / 3, 1 / 3, -0.5 * thickness)]
@@ -493,6 +511,27 @@ def mx2(formula='MoS2', kind='2H', a=3.18, thickness=3.19,
         basis = [(0, 0, 0),
                  (2 / 3, 1 / 3, 0.5 * thickness),
                  (1 / 3, 2 / 3, -0.5 * thickness)]
+    elif kind == '1T\'':
+        # 1T' phase has a rectangular unit cell (2x1 supercell of 1T)
+        # With distortion along one direction (metal-metal dimerization)
+        rect_a = a * 2  # Doubled in x direction for the rectangular cell
+        rect_b = a * 3**0.5  # Width in y direction
+        
+        # Metal atom positions with dimerization
+        m1_pos = (0.0, 0.0, 0.0)
+        m2_pos = (0.5 - distortion_factor, 0.0, 0.0)
+        
+        # Chalcogen positions (top and bottom layers)
+        x1_top = (0.25, 0.5, 0.5 * thickness)
+        x2_top = (0.75, 0.5, 0.5 * thickness)
+        x1_bot = (0.25, 0.0, -0.5 * thickness)
+        x2_bot = (0.75, 0.0, -0.5 * thickness)
+        
+        basis = [m1_pos, m2_pos, x1_top, x2_top, x1_bot, x2_bot]
+        cell = [[rect_a, 0, 0], [0, rect_b, 0], [0, 0, 0]]
+        
+        # Need to adjust formula for the 2x1 supercell
+        formula += formula
     else:
         raise ValueError('Structure not recognized:', kind)
 
